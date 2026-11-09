@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="21H Tracker" />
+  <title>21H Work Tracker</title>
+  
+  <!-- Standalone Mobile Styling -->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; padding: 16px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 16px; }
+    .header { background: #1e293b; padding: 16px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .header h1 { font-size: 1.25rem; font-weight: 700; color: #fff; }
+    .header p { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+    .btn { background: #4f46e5; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 0.75rem; cursor: pointer; }
+    .btn-secondary { background: #334155; }
+    .card { background: #1e293b; padding: 16px; border-radius: 16px; border: 1px solid #334155; display: flex; flex-direction: column; gap: 12px; }
+    .card-header { display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 8px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; }
+    .card-header .duration { color: #818cf8; font-size: 0.875rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; }
+    .input-group { display: flex; }
+    .input-group input { width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 8px; border-radius: 8px 0 0 8px; font-family: monospace; font-size: 0.875rem; text-align: center; }
+    .input-group button { background: #334155; border: 1px solid #334155; color: #fff; padding: 0 10px; border-radius: 0 8px 8px 0; font-weight: 700; font-size: 0.75rem; }
+    .highlight-card { background: #312e81; border-color: #4338ca; }
+    .highlight-card .card-header { border-color: #4338ca; color: #c7d2fe; }
+    .highlight-card .card-header .duration { color: #a5b4fc; }
+    .output-box { background: #4f46e5; color: white; padding: 8px; border-radius: 8px; font-family: monospace; font-weight: 700; font-size: 0.875rem; text-align: center; }
+  </style>
+
+  <!-- React & Babel Scripts -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    function App() {
+      const [d1In, setD1In] = useState(() => localStorage.getItem('d1In') || '09:00');
+      const [d1InP, setD1InP] = useState(() => localStorage.getItem('d1InP') || 'AM');
+      const [d1Out, setD1Out] = useState(() => localStorage.getItem('d1Out') || '05:00');
+      const [d1OutP, setD1OutP] = useState(() => localStorage.getItem('d1OutP') || 'PM');
+
+      const [d2In, setD2In] = useState(() => localStorage.getItem('d2In') || '09:00');
+      const [d2InP, setD2InP] = useState(() => localStorage.getItem('d2InP') || 'AM');
+      const [d2Out, setD2Out] = useState(() => localStorage.getItem('d2Out') || '05:00');
+      const [d2OutP, setD2OutP] = useState(() => localStorage.getItem('d2OutP') || 'PM');
+
+      const [d3In, setD3In] = useState(() => localStorage.getItem('d3In') || '09:00');
+      const [d3InP, setD3InP] = useState(() => localStorage.getItem('d3InP') || 'AM');
+      const [copied, setCopied] = useState(false);
+
+      useEffect(() => {
+        localStorage.setItem('d1In', d1In); localStorage.setItem('d1InP', d1InP);
+        localStorage.setItem('d1Out', d1Out); localStorage.setItem('d1OutP', d1OutP);
+        localStorage.setItem('d2In', d2In); localStorage.setItem('d2InP', d2InP);
+        localStorage.setItem('d2Out', d2Out); localStorage.setItem('d2OutP', d2OutP);
+        localStorage.setItem('d3In', d3In); localStorage.setItem('d3InP', d3InP);
+      }, [d1In, d1InP, d1Out, d1OutP, d2In, d2InP, d2Out, d2OutP, d3In, d3InP]);
+
+      const parseMins = (t, p) => {
+        if (!t) return null;
+        const [hStr, mStr] = t.split(':');
+        let h = parseInt(hStr, 10), m = parseInt(mStr, 10);
+        if (isNaN(h) || isNaN(m)) return null;
+        if (p === 'PM' && h < 12) h += 12;
+        if (p === 'AM' && h === 12) h = 0;
+        return h * 60 + m;
+      };
+
+      const formatHHMM = (mins) => {
+        if (mins === null || isNaN(mins)) return '--:--';
+        const abs = Math.abs(mins);
+        return `${String(Math.floor(abs/60)).padStart(2,'0')}:${String(abs%60).padStart(2,'0')}`;
+      };
+
+      const format12H = (mins) => {
+        if (mins === null || isNaN(mins)) return '--:-- --';
+        let norm = (mins % 1440 + 1440) % 1440;
+        let h = Math.floor(norm / 60), m = norm % 60;
+        const p = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} ${p}`;
+      };
+
+      const calcMins = (inT, inP, outT, outP) => {
+        const s = parseMins(inT, inP), e = parseMins(outT, outP);
+        if (s === null || e === null) return 0;
+        let diff = e - s;
+        if (diff < 0) diff += 1440;
+        return diff;
+      };
+
+      const d1Mins = useMemo(() => calcMins(d1In, d1InP, d1Out, d1OutP), [d1In, d1InP, d1Out, d1OutP]);
+      const d2Mins = useMemo(() => calcMins(d2In, d2InP, d2Out, d2OutP), [d2In, d2InP, d2Out, d2OutP]);
+      const reqD3Mins = Math.max(0, 1260 - (d1Mins + d2Mins));
+
+      const d3ExitTime = useMemo(() => {
+        const s = parseMins(d3In, d3InP);
+        return s === null ? null : s + reqD3Mins;
+      }, [d3In, d3InP, reqD3Mins]);
+
+      const handleCopy = () => {
+        const text = `21H WORK TRACKER\nDay 1: ${d1In} ${d1InP} - ${d1Out} ${d1OutP} (${formatHHMM(d1Mins)})\nDay 2: ${d2In} ${d2InP} - ${d2Out} ${d2OutP} (${formatHHMM(d2Mins)})\nDay 3 Leave At: ${format12H(d3ExitTime)}`;
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      };
+
+      return (
+        <div className="container">
+          <div className="header">
+            <div>
+              <h1>21H Work Tracker</h1>
+              <p>Standalone Mobile App</p>
+            </div>
+            <div style={{display:'flex', gap:'8px'}}>
+              <button className="btn" onClick={handleCopy}>{copied ? 'Copied!' : 'Copy'}</button>
+              <button className="btn btn-secondary" onClick={() => localStorage.clear() || location.reload()}>Reset</button>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <span>Day 1</span>
+              <span className="duration">{formatHHMM(d1Mins)}</span>
+            </div>
+            <div className="grid">
+              <div className="field">
+                <label>Entry Time</label>
+                <div className="input-group">
+                  <input type="text" value={d1In} onChange={e=>setD1In(e.target.value)} />
+                  <button onClick={()=>setD1InP(p=>p==='AM'?'PM':'AM')}>{d1InP}</button>
+                </div>
+              </div>
+              <div className="field">
+                <label>Exit Time</label>
+                <div className="input-group">
+                  <input type="text" value={d1Out} onChange={e=>setD1Out(e.target.value)} />
+                  <button onClick={()=>setD1OutP(p=>p==='AM'?'PM':'AM')}>{d1OutP}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <span>Day 2</span>
+              <span className="duration">{formatHHMM(d2Mins)}</span>
+            </div>
+            <div className="grid">
+              <div className="field">
+                <label>Entry Time</label>
+                <div className="input-group">
+                  <input type="text" value={d2In} onChange={e=>setD2In(e.target.value)} />
+                  <button onClick={()=>setD2InP(p=>p==='AM'?'PM':'AM')}>{d2InP}</button>
+                </div>
+              </div>
+              <div className="field">
+                <label>Exit Time</label>
+                <div className="input-group">
+                  <input type="text" value={d2Out} onChange={e=>setD2Out(e.target.value)} />
+                  <button onClick={()=>setD2OutP(p=>p==='AM'?'PM':'AM')}>{d2OutP}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card highlight-card">
+            <div className="card-header">
+              <span>Day 3 Target Predictor</span>
+              <span className="duration">Req: {formatHHMM(reqD3Mins)}</span>
+            </div>
+            <div className="grid">
+              <div className="field">
+                <label>Entry Time</label>
+                <div className="input-group">
+                  <input type="text" value={d3In} onChange={e=>setD3In(e.target.value)} />
+                  <button onClick={()=>setD3InP(p=>p==='AM'?'PM':'AM')}>{d3InP}</button>
+                </div>
+              </div>
+              <div className="field">
+                <label>Required Exit</label>
+                <div className="output-box">{format12H(d3ExitTime)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

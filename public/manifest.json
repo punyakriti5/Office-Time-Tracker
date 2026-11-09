@@ -1,0 +1,10 @@
+{
+  "short_name": "21H Tracker",
+  "name": "21H Work Tracker",
+  "icons": [],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait"
+}
